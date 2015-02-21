@@ -1,0 +1,205 @@
+---
+title: Practical Machine Learning - Course Project
+author: "Konstantin Krismer"
+date: '`r Sys.Date()`'
+output:
+  html_document:
+    toc: true
+    self_contained: no
+    number_sections: true
+---
+
+# Configuartion
+
+Load libraries:
+```{r loadLibrary}
+knitr::opts_chunk$set(cache=TRUE, cache.lazy=FALSE, fig.width=10, fig.height=7, tidy=TRUE)
+library(caret)
+library(dplyr)
+library(reshape2)
+library(knitr)
+```
+
+Load data:
+
+```{r loadData, message=FALSE, warning=FALSE}
+data <- read.csv("data/pml-training.csv")
+training.idx <- createDataPartition(y = data$classe, p = 0.6, list = FALSE)
+training.set <- data[training.idx, ]
+test.set <- data[-training.idx, ]
+unclassified <- read.csv("data/pml-testing.csv")
+```
+
+# Preprocessing
+
+Remove features with `NA` values:
+```{r removeNA, message=FALSE, warning=FALSE}
+na.features.training <- colnames(training.set)[apply(training.set, 2, function(x) sum(is.na(x))) > 0]
+na.features.unclassified <-  colnames(unclassified)[apply(unclassified, 2, function(x) sum(is.na(x))) > 0]
+na.features <- union(na.features.training, na.features.unclassified)
+training.set <- training.set[, !(colnames(training.set) %in% na.features)]
+unclassified <- unclassified[, !(colnames(unclassified) %in% na.features)]
+print(kable(data.frame(features = na.features), col.names = c("features with NA values"), caption = "Removed the following NA-containing features:"))
+```
+
+Remove features deemed insignificant (based on common sense and lack of association with target variable):
+```{r removeInsignificantFeatures}
+conttable.user_name <- table(training.set$user_name, training.set$classe)
+print(conttable.user_name)
+chisq.test(conttable.user_name)
+# user_name feature will be removed even though there is some association with the target variable,
+# since prediction should not be based on this feature
+conttable.new_window <- table(training.set$new_window, training.set$classe)
+conttable.new_window
+fisher.test(conttable.new_window)
+
+insignificant.features <- c("X", "user_name", "raw_timestamp_part_1", "raw_timestamp_part_2", "cvtd_timestamp", "new_window", "num_window")
+training.set <- training.set[, !(colnames(training.set) %in% insignificant.features)]
+unclassified <- unclassified[, !(colnames(unclassified) %in% insignificant.features)]
+```
+
+# Feature engineering
+
+Since the range of values is significantly different between features, each feature is normalized:
+```{r normFeatures}
+# exclude categorical target feature from normalization
+training.set.features <- as.matrix(training.set[, 1 : (ncol(training.set) - 1)])
+
+training.set.norm <- data.frame(apply(training.set.features, 2, function(x) {
+  feature.mean <- mean(x)
+  feature.sd <- sd(x)
+  return(apply(as.matrix(x), 1, function(y) {
+    return((y - feature.mean) / feature.sd)
+  }))
+}))
+
+training.set.norm$classe <- training.set$classe
+```
+
+# Exploratory data analysis
+
+## Distribution of feature values
+
+```{r featureValueDist, fig.width=8, fig.height=30, message=FALSE, warning=FALSE}
+ggplot(melt(training.set.norm), aes(value)) +
+  geom_histogram(aes(y=..density..), colour = 'black', fill = 'skyblue') + 
+  geom_density() + 
+  facet_wrap(~variable, scales = "free", ncol = 4) +
+  theme(axis.text.y = element_blank(), axis.ticks.y = element_blank())
+```
+
+## Feature value vs class label
+
+```{r featureVsClassLabel, fig.width=8, fig.height=30, message=FALSE, warning=FALSE}
+ggplot(melt(training.set.norm), aes(x = classe, y = value, colour = classe)) +
+  geom_point() +
+  facet_wrap(~variable, scales = "free", ncol = 4) +
+  theme(axis.text = element_blank(), axis.ticks = element_blank(), axis.title = element_blank())
+```
+
+## Unsupervised feature clustering 
+
+**Distance metric:**: $1 - \rho$ (Pearson product-moment correlation coefficient)
+
+```{r featureDendrogram, fig.height=10}
+dendro <- as.dendrogram(hclust(as.dist(1 - cor(training.set.features, method = "pearson")), method = "complete"))
+par(cex = 0.8, mar = c(5, 8, 4, 1))
+plot(dendro)
+```
+
+# Train model
+
+Prepare folds for cross-validation:
+```{r cv}
+cv <- trainControl(method = "repeatedcv", repeats = 2)
+```
+
+```{r train, results='hide'}
+training.set.norm <- training.set.norm[sample.int(nrow(training.set.norm), size = 300, replace = FALSE), ]
+training.set.norm <- training.set.norm[, c(1 : 10, ncol(training.set.norm))]
+fit <- train(classe ~ ., data = training.set.norm, method = "rf", trControl = cv, prox = TRUE)
+```
+
+Prediction accurracy on training data (in sample error):
+```{r predictTraining}
+prediction.training <- predict(fit, training.set.norm)
+tbl <- table(prediction.training, training.set.norm$classe)
+tbl
+```
+
+Accuracy:
+```{r trainAccu}
+sum(diag(nrow(tbl)) * tbl) / sum(tbl)
+```
+
+Baseline accuracy:
+```{r trainBaseline}
+max(table(training.set.norm$classe)) / sum(table(training.set.norm$classe))
+```
+
+# Estimate prediction accuracy on test set
+
+Remove `NA`-containing features and insignificant features:
+```{r removeFeaturesTest}
+test.set <- test.set[, !(colnames(test.set) %in% na.features)]
+test.set <- test.set[, !(colnames(test.set) %in% insignificant.features)]
+```
+
+Perform normalization of test set values based on mean and standard deviation of training set values:
+```{r normTestFeatures}
+# exclude categorical target feature from normalization
+test.set.features <- as.matrix(test.set[, 1 : (ncol(test.set) - 1)])
+
+# calculate mean and sd of training set features:
+training.set.features <- as.matrix(training.set[, 1 : (ncol(training.set) - 1)])
+feature.characteristics <- data.frame(apply(training.set.features, 2, function(x) {
+  return(c(mean(x), sd(x)))
+}))
+
+i <- 1
+test.set.norm <- data.frame(apply(test.set.features, 2, function(x) {
+  feature.mean <- feature.characteristics[1, i]
+  feature.sd <- feature.characteristics[2, i]
+  i <<- i + 1
+  return(apply(as.matrix(x), 1, function(y) {
+    return((y - feature.mean) / feature.sd)
+  }))
+}))
+test.set.norm$classe <- test.set$classe
+```
+
+Prediction accurracy on test data (in sample error):
+```{r predictTest}
+prediction.test <- predict(fit, test.set.norm)
+tbl <- table(prediction.test, test.set.norm$classe)
+tbl
+```
+
+Accuracy:
+```{r testAccu}
+sum(diag(nrow(tbl)) * tbl) / sum(tbl)
+```
+
+Baseline accuracy:
+```{r testBaseline}
+max(table(test.set.norm$classe)) / sum(table(test.set.norm$classe))
+```
+
+# Predict
+
+Perform normalization of unclassified values based on mean and standard deviation of training set values:
+```{r finalPredict}
+# exclude problem id feature from normalization
+unclassified.features <- as.matrix(unclassified[, 1 : (ncol(unclassified) - 1)])
+
+i <- 1
+unclassified.norm <- data.frame(apply(unclassified.features, 2, function(x) {
+  feature.mean <- feature.characteristics[1, i]
+  feature.sd <- feature.characteristics[2, i]
+  i <<- i + 1
+  return(apply(as.matrix(x), 1, function(y) {
+    return((y - feature.mean) / feature.sd)
+  }))
+}))
+```
+
