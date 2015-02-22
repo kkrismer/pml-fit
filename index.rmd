@@ -18,6 +18,7 @@ library(caret)
 library(dplyr)
 library(reshape2)
 library(knitr)
+library(randomForest)
 ```
 
 Load data:
@@ -39,7 +40,7 @@ na.features.unclassified <-  colnames(unclassified)[apply(unclassified, 2, funct
 na.features <- union(na.features.training, na.features.unclassified)
 training.set <- training.set[, !(colnames(training.set) %in% na.features)]
 unclassified <- unclassified[, !(colnames(unclassified) %in% na.features)]
-print(kable(data.frame(features = na.features), col.names = c("features with NA values"), caption = "Removed the following NA-containing features:"))
+kable(data.frame(features = na.features), col.names = c("features with NA values"), caption = "Removed the following NA-containing features:")
 ```
 
 Remove features deemed insignificant (based on common sense and lack of association with target variable):
@@ -115,9 +116,7 @@ cv <- trainControl(method = "repeatedcv", repeats = 2)
 ```
 
 ```{r train, results='hide'}
-training.set.norm <- training.set.norm[sample.int(nrow(training.set.norm), size = 300, replace = FALSE), ]
-training.set.norm <- training.set.norm[, c(1 : 10, ncol(training.set.norm))]
-fit <- train(classe ~ ., data = training.set.norm, method = "rf", trControl = cv, prox = TRUE)
+fit <- randomForest(formula = classe ~ ., data = training.set.norm, ntree = 500)
 ```
 
 Prediction accurracy on training data (in sample error):
@@ -202,4 +201,22 @@ unclassified.norm <- data.frame(apply(unclassified.features, 2, function(x) {
   }))
 }))
 ```
+
+Predict class label:
+```{r predictUnclassified}
+prediction.unclassified <- predict(fit, unclassified.norm)
+prediction.unclassified
+```
+
+```{r writeFiles}
+pmlWriteFiles = function(x){
+  n = length(x)
+  for(i in 1:n){
+    filename = paste0("problem_id_", i, ".txt")
+    write.table(x[i], file = filename, quote=FALSE, row.names=FALSE, col.names=FALSE)
+  }
+}
+pmlWriteFiles(prediction.unclassified )
+```
+
 

@@ -104,7 +104,16 @@ library(caret)</code></pre>
 ## 
 ##     intersect, setdiff, setequal, union</code></pre>
 <pre class="r"><code>library(reshape2)
-library(knitr)</code></pre>
+library(knitr)
+library(randomForest)</code></pre>
+<pre><code>## randomForest 4.6-10
+## Type rfNews() to see new features/changes/bug fixes.
+## 
+## Attaching package: &#39;randomForest&#39;
+## 
+## The following object is masked from &#39;package:dplyr&#39;:
+## 
+##     combine</code></pre>
 <p>Load data:</p>
 <pre class="r"><code>data &lt;- read.csv(&quot;data/pml-training.csv&quot;)
 training.idx &lt;- createDataPartition(y = data$classe, p = 0.6, list = FALSE)
@@ -122,131 +131,335 @@ na.features.unclassified &lt;- colnames(unclassified)[apply(unclassified, 2, fun
 na.features &lt;- union(na.features.training, na.features.unclassified)
 training.set &lt;- training.set[, !(colnames(training.set) %in% na.features)]
 unclassified &lt;- unclassified[, !(colnames(unclassified) %in% na.features)]
-print(kable(data.frame(features = na.features), col.names = c(&quot;features with NA values&quot;), 
-    caption = &quot;Removed the following NA-containing features:&quot;))</code></pre>
-<pre><code>## 
-## 
-## Table: Removed the following NA-containing features:
-## 
-## features with NA values  
-## -------------------------
-## max_roll_belt            
-## max_picth_belt           
-## min_roll_belt            
-## min_pitch_belt           
-## amplitude_roll_belt      
-## amplitude_pitch_belt     
-## var_total_accel_belt     
-## avg_roll_belt            
-## stddev_roll_belt         
-## var_roll_belt            
-## avg_pitch_belt           
-## stddev_pitch_belt        
-## var_pitch_belt           
-## avg_yaw_belt             
-## stddev_yaw_belt          
-## var_yaw_belt             
-## var_accel_arm            
-## avg_roll_arm             
-## stddev_roll_arm          
-## var_roll_arm             
-## avg_pitch_arm            
-## stddev_pitch_arm         
-## var_pitch_arm            
-## avg_yaw_arm              
-## stddev_yaw_arm           
-## var_yaw_arm              
-## max_roll_arm             
-## max_picth_arm            
-## max_yaw_arm              
-## min_roll_arm             
-## min_pitch_arm            
-## min_yaw_arm              
-## amplitude_roll_arm       
-## amplitude_pitch_arm      
-## amplitude_yaw_arm        
-## max_roll_dumbbell        
-## max_picth_dumbbell       
-## min_roll_dumbbell        
-## min_pitch_dumbbell       
-## amplitude_roll_dumbbell  
-## amplitude_pitch_dumbbell 
-## var_accel_dumbbell       
-## avg_roll_dumbbell        
-## stddev_roll_dumbbell     
-## var_roll_dumbbell        
-## avg_pitch_dumbbell       
-## stddev_pitch_dumbbell    
-## var_pitch_dumbbell       
-## avg_yaw_dumbbell         
-## stddev_yaw_dumbbell      
-## var_yaw_dumbbell         
-## max_roll_forearm         
-## max_picth_forearm        
-## min_roll_forearm         
-## min_pitch_forearm        
-## amplitude_roll_forearm   
-## amplitude_pitch_forearm  
-## var_accel_forearm        
-## avg_roll_forearm         
-## stddev_roll_forearm      
-## var_roll_forearm         
-## avg_pitch_forearm        
-## stddev_pitch_forearm     
-## var_pitch_forearm        
-## avg_yaw_forearm          
-## stddev_yaw_forearm       
-## var_yaw_forearm          
-## kurtosis_roll_belt       
-## kurtosis_picth_belt      
-## kurtosis_yaw_belt        
-## skewness_roll_belt       
-## skewness_roll_belt.1     
-## skewness_yaw_belt        
-## max_yaw_belt             
-## min_yaw_belt             
-## amplitude_yaw_belt       
-## kurtosis_roll_arm        
-## kurtosis_picth_arm       
-## kurtosis_yaw_arm         
-## skewness_roll_arm        
-## skewness_pitch_arm       
-## skewness_yaw_arm         
-## kurtosis_roll_dumbbell   
-## kurtosis_picth_dumbbell  
-## kurtosis_yaw_dumbbell    
-## skewness_roll_dumbbell   
-## skewness_pitch_dumbbell  
-## skewness_yaw_dumbbell    
-## max_yaw_dumbbell         
-## min_yaw_dumbbell         
-## amplitude_yaw_dumbbell   
-## kurtosis_roll_forearm    
-## kurtosis_picth_forearm   
-## kurtosis_yaw_forearm     
-## skewness_roll_forearm    
-## skewness_pitch_forearm   
-## skewness_yaw_forearm     
-## max_yaw_forearm          
-## min_yaw_forearm          
-## amplitude_yaw_forearm</code></pre>
+kable(data.frame(features = na.features), col.names = c(&quot;features with NA values&quot;), 
+    caption = &quot;Removed the following NA-containing features:&quot;)</code></pre>
+<table>
+<caption>Removed the following NA-containing features:</caption>
+<thead>
+<tr class="header">
+<th align="left">features with NA values</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">max_roll_belt</td>
+</tr>
+<tr class="even">
+<td align="left">max_picth_belt</td>
+</tr>
+<tr class="odd">
+<td align="left">min_roll_belt</td>
+</tr>
+<tr class="even">
+<td align="left">min_pitch_belt</td>
+</tr>
+<tr class="odd">
+<td align="left">amplitude_roll_belt</td>
+</tr>
+<tr class="even">
+<td align="left">amplitude_pitch_belt</td>
+</tr>
+<tr class="odd">
+<td align="left">var_total_accel_belt</td>
+</tr>
+<tr class="even">
+<td align="left">avg_roll_belt</td>
+</tr>
+<tr class="odd">
+<td align="left">stddev_roll_belt</td>
+</tr>
+<tr class="even">
+<td align="left">var_roll_belt</td>
+</tr>
+<tr class="odd">
+<td align="left">avg_pitch_belt</td>
+</tr>
+<tr class="even">
+<td align="left">stddev_pitch_belt</td>
+</tr>
+<tr class="odd">
+<td align="left">var_pitch_belt</td>
+</tr>
+<tr class="even">
+<td align="left">avg_yaw_belt</td>
+</tr>
+<tr class="odd">
+<td align="left">stddev_yaw_belt</td>
+</tr>
+<tr class="even">
+<td align="left">var_yaw_belt</td>
+</tr>
+<tr class="odd">
+<td align="left">var_accel_arm</td>
+</tr>
+<tr class="even">
+<td align="left">avg_roll_arm</td>
+</tr>
+<tr class="odd">
+<td align="left">stddev_roll_arm</td>
+</tr>
+<tr class="even">
+<td align="left">var_roll_arm</td>
+</tr>
+<tr class="odd">
+<td align="left">avg_pitch_arm</td>
+</tr>
+<tr class="even">
+<td align="left">stddev_pitch_arm</td>
+</tr>
+<tr class="odd">
+<td align="left">var_pitch_arm</td>
+</tr>
+<tr class="even">
+<td align="left">avg_yaw_arm</td>
+</tr>
+<tr class="odd">
+<td align="left">stddev_yaw_arm</td>
+</tr>
+<tr class="even">
+<td align="left">var_yaw_arm</td>
+</tr>
+<tr class="odd">
+<td align="left">max_roll_arm</td>
+</tr>
+<tr class="even">
+<td align="left">max_picth_arm</td>
+</tr>
+<tr class="odd">
+<td align="left">max_yaw_arm</td>
+</tr>
+<tr class="even">
+<td align="left">min_roll_arm</td>
+</tr>
+<tr class="odd">
+<td align="left">min_pitch_arm</td>
+</tr>
+<tr class="even">
+<td align="left">min_yaw_arm</td>
+</tr>
+<tr class="odd">
+<td align="left">amplitude_roll_arm</td>
+</tr>
+<tr class="even">
+<td align="left">amplitude_pitch_arm</td>
+</tr>
+<tr class="odd">
+<td align="left">amplitude_yaw_arm</td>
+</tr>
+<tr class="even">
+<td align="left">max_roll_dumbbell</td>
+</tr>
+<tr class="odd">
+<td align="left">max_picth_dumbbell</td>
+</tr>
+<tr class="even">
+<td align="left">min_roll_dumbbell</td>
+</tr>
+<tr class="odd">
+<td align="left">min_pitch_dumbbell</td>
+</tr>
+<tr class="even">
+<td align="left">amplitude_roll_dumbbell</td>
+</tr>
+<tr class="odd">
+<td align="left">amplitude_pitch_dumbbell</td>
+</tr>
+<tr class="even">
+<td align="left">var_accel_dumbbell</td>
+</tr>
+<tr class="odd">
+<td align="left">avg_roll_dumbbell</td>
+</tr>
+<tr class="even">
+<td align="left">stddev_roll_dumbbell</td>
+</tr>
+<tr class="odd">
+<td align="left">var_roll_dumbbell</td>
+</tr>
+<tr class="even">
+<td align="left">avg_pitch_dumbbell</td>
+</tr>
+<tr class="odd">
+<td align="left">stddev_pitch_dumbbell</td>
+</tr>
+<tr class="even">
+<td align="left">var_pitch_dumbbell</td>
+</tr>
+<tr class="odd">
+<td align="left">avg_yaw_dumbbell</td>
+</tr>
+<tr class="even">
+<td align="left">stddev_yaw_dumbbell</td>
+</tr>
+<tr class="odd">
+<td align="left">var_yaw_dumbbell</td>
+</tr>
+<tr class="even">
+<td align="left">max_roll_forearm</td>
+</tr>
+<tr class="odd">
+<td align="left">max_picth_forearm</td>
+</tr>
+<tr class="even">
+<td align="left">min_roll_forearm</td>
+</tr>
+<tr class="odd">
+<td align="left">min_pitch_forearm</td>
+</tr>
+<tr class="even">
+<td align="left">amplitude_roll_forearm</td>
+</tr>
+<tr class="odd">
+<td align="left">amplitude_pitch_forearm</td>
+</tr>
+<tr class="even">
+<td align="left">var_accel_forearm</td>
+</tr>
+<tr class="odd">
+<td align="left">avg_roll_forearm</td>
+</tr>
+<tr class="even">
+<td align="left">stddev_roll_forearm</td>
+</tr>
+<tr class="odd">
+<td align="left">var_roll_forearm</td>
+</tr>
+<tr class="even">
+<td align="left">avg_pitch_forearm</td>
+</tr>
+<tr class="odd">
+<td align="left">stddev_pitch_forearm</td>
+</tr>
+<tr class="even">
+<td align="left">var_pitch_forearm</td>
+</tr>
+<tr class="odd">
+<td align="left">avg_yaw_forearm</td>
+</tr>
+<tr class="even">
+<td align="left">stddev_yaw_forearm</td>
+</tr>
+<tr class="odd">
+<td align="left">var_yaw_forearm</td>
+</tr>
+<tr class="even">
+<td align="left">kurtosis_roll_belt</td>
+</tr>
+<tr class="odd">
+<td align="left">kurtosis_picth_belt</td>
+</tr>
+<tr class="even">
+<td align="left">kurtosis_yaw_belt</td>
+</tr>
+<tr class="odd">
+<td align="left">skewness_roll_belt</td>
+</tr>
+<tr class="even">
+<td align="left">skewness_roll_belt.1</td>
+</tr>
+<tr class="odd">
+<td align="left">skewness_yaw_belt</td>
+</tr>
+<tr class="even">
+<td align="left">max_yaw_belt</td>
+</tr>
+<tr class="odd">
+<td align="left">min_yaw_belt</td>
+</tr>
+<tr class="even">
+<td align="left">amplitude_yaw_belt</td>
+</tr>
+<tr class="odd">
+<td align="left">kurtosis_roll_arm</td>
+</tr>
+<tr class="even">
+<td align="left">kurtosis_picth_arm</td>
+</tr>
+<tr class="odd">
+<td align="left">kurtosis_yaw_arm</td>
+</tr>
+<tr class="even">
+<td align="left">skewness_roll_arm</td>
+</tr>
+<tr class="odd">
+<td align="left">skewness_pitch_arm</td>
+</tr>
+<tr class="even">
+<td align="left">skewness_yaw_arm</td>
+</tr>
+<tr class="odd">
+<td align="left">kurtosis_roll_dumbbell</td>
+</tr>
+<tr class="even">
+<td align="left">kurtosis_picth_dumbbell</td>
+</tr>
+<tr class="odd">
+<td align="left">kurtosis_yaw_dumbbell</td>
+</tr>
+<tr class="even">
+<td align="left">skewness_roll_dumbbell</td>
+</tr>
+<tr class="odd">
+<td align="left">skewness_pitch_dumbbell</td>
+</tr>
+<tr class="even">
+<td align="left">skewness_yaw_dumbbell</td>
+</tr>
+<tr class="odd">
+<td align="left">max_yaw_dumbbell</td>
+</tr>
+<tr class="even">
+<td align="left">min_yaw_dumbbell</td>
+</tr>
+<tr class="odd">
+<td align="left">amplitude_yaw_dumbbell</td>
+</tr>
+<tr class="even">
+<td align="left">kurtosis_roll_forearm</td>
+</tr>
+<tr class="odd">
+<td align="left">kurtosis_picth_forearm</td>
+</tr>
+<tr class="even">
+<td align="left">kurtosis_yaw_forearm</td>
+</tr>
+<tr class="odd">
+<td align="left">skewness_roll_forearm</td>
+</tr>
+<tr class="even">
+<td align="left">skewness_pitch_forearm</td>
+</tr>
+<tr class="odd">
+<td align="left">skewness_yaw_forearm</td>
+</tr>
+<tr class="even">
+<td align="left">max_yaw_forearm</td>
+</tr>
+<tr class="odd">
+<td align="left">min_yaw_forearm</td>
+</tr>
+<tr class="even">
+<td align="left">amplitude_yaw_forearm</td>
+</tr>
+</tbody>
+</table>
 <p>Remove features deemed insignificant (based on common sense and lack of association with target variable):</p>
 <pre class="r"><code>conttable.user_name &lt;- table(training.set$user_name, training.set$classe)
 print(conttable.user_name)</code></pre>
 <pre><code>##           
 ##              A   B   C   D   E
-##   adelmo   716 475 476 306 423
-##   carlitos 508 419 287 287 367
-##   charles  546 445 332 394 411
-##   eurico   508 351 286 332 342
-##   jeremy   696 290 370 315 330
-##   pedro    374 299 303 296 292</code></pre>
+##   adelmo   672 466 432 319 398
+##   carlitos 516 424 293 289 367
+##   charles  547 432 345 377 436
+##   eurico   529 368 303 332 326
+##   jeremy   731 276 380 317 334
+##   pedro    353 313 301 296 304</code></pre>
 <pre class="r"><code>chisq.test(conttable.user_name)</code></pre>
 <pre><code>## 
 ##  Pearson&#39;s Chi-squared test
 ## 
 ## data:  conttable.user_name
-## X-squared = 153.5589, df = 20, p-value &lt; 2.2e-16</code></pre>
+## X-squared = 162.7422, df = 20, p-value &lt; 2.2e-16</code></pre>
 <pre class="r"><code># user_name feature will be removed even though there is some association
 # with the target variable, since prediction should not be based on this
 # feature
@@ -254,14 +467,14 @@ conttable.new_window &lt;- table(training.set$new_window, training.set$classe)
 conttable.new_window</code></pre>
 <pre><code>##      
 ##          A    B    C    D    E
-##   no  3283 2232 2015 1882 2113
-##   yes   65   47   39   48   52</code></pre>
+##   no  3287 2238 2019 1895 2118
+##   yes   61   41   35   35   47</code></pre>
 <pre class="r"><code>fisher.test(conttable.new_window)</code></pre>
 <pre><code>## 
 ##  Fisher&#39;s Exact Test for Count Data
 ## 
 ## data:  conttable.new_window
-## p-value = 0.5426
+## p-value = 0.8324
 ## alternative hypothesis: two.sided</code></pre>
 <pre class="r"><code>insignificant.features &lt;- c(&quot;X&quot;, &quot;user_name&quot;, &quot;raw_timestamp_part_1&quot;, &quot;raw_timestamp_part_2&quot;, 
     &quot;cvtd_timestamp&quot;, &quot;new_window&quot;, &quot;num_window&quot;)
@@ -314,28 +527,24 @@ plot(dendro)</code></pre>
 <h1><span class="header-section-number">5</span> Train model</h1>
 <p>Prepare folds for cross-validation:</p>
 <pre class="r"><code>cv &lt;- trainControl(method = &quot;repeatedcv&quot;, repeats = 2)</code></pre>
-<pre class="r"><code>training.set.norm &lt;- training.set.norm[sample.int(nrow(training.set.norm), size = 300, 
-    replace = FALSE), ]
-training.set.norm &lt;- training.set.norm[, c(1:10, ncol(training.set.norm))]
-fit &lt;- train(classe ~ ., data = training.set.norm, method = &quot;rf&quot;, trControl = cv, 
-    prox = TRUE)</code></pre>
+<pre class="r"><code>fit &lt;- randomForest(formula = classe ~ ., data = training.set.norm, ntree = 500)</code></pre>
 <p>Prediction accurracy on training data (in sample error):</p>
 <pre class="r"><code>prediction.training &lt;- predict(fit, training.set.norm)
 tbl &lt;- table(prediction.training, training.set.norm$classe)
 tbl</code></pre>
 <pre><code>##                    
-## prediction.training  A  B  C  D  E
-##                   A 95  0  0  0  0
-##                   B  0 58  0  0  0
-##                   C  0  0 47  0  0
-##                   D  0  0  0 45  0
-##                   E  0  0  0  0 55</code></pre>
+## prediction.training    A    B    C    D    E
+##                   A 3348    0    0    0    0
+##                   B    0 2279    0    0    0
+##                   C    0    0 2054    0    0
+##                   D    0    0    0 1930    0
+##                   E    0    0    0    0 2165</code></pre>
 <p>Accuracy:</p>
 <pre class="r"><code>sum(diag(nrow(tbl)) * tbl)/sum(tbl)</code></pre>
 <pre><code>## [1] 1</code></pre>
 <p>Baseline accuracy:</p>
 <pre class="r"><code>max(table(training.set.norm$classe))/sum(table(training.set.norm$classe))</code></pre>
-<pre><code>## [1] 0.3166667</code></pre>
+<pre><code>## [1] 0.2843071</code></pre>
 </div>
 <div id="estimate-prediction-accuracy-on-test-set" class="section level1">
 <h1><span class="header-section-number">6</span> Estimate prediction accuracy on test set</h1>
@@ -368,14 +577,14 @@ tbl &lt;- table(prediction.test, test.set.norm$classe)
 tbl</code></pre>
 <pre><code>##                
 ## prediction.test    A    B    C    D    E
-##               A 1844  282  310  371  235
-##               B  111  950  189   84   36
-##               C   80  139  706  170   15
-##               D   99   18   88  580  152
-##               E   98  129   75   81 1004</code></pre>
+##               A 2230    6    0    0    0
+##               B    2 1498   10    0    0
+##               C    0   14 1355   15    2
+##               D    0    0    3 1271    7
+##               E    0    0    0    0 1433</code></pre>
 <p>Accuracy:</p>
 <pre class="r"><code>sum(diag(nrow(tbl)) * tbl)/sum(tbl)</code></pre>
-<pre><code>## [1] 0.6479735</code></pre>
+<pre><code>## [1] 0.9924802</code></pre>
 <p>Baseline accuracy:</p>
 <pre class="r"><code>max(table(test.set.norm$classe))/sum(table(test.set.norm$classe))</code></pre>
 <pre><code>## [1] 0.2844762</code></pre>
@@ -395,6 +604,21 @@ unclassified.norm &lt;- data.frame(apply(unclassified.features, 2, function(x) {
         return((y - feature.mean)/feature.sd)
     }))
 }))</code></pre>
+<p>Predict class label:</p>
+<pre class="r"><code>prediction.unclassified &lt;- predict(fit, unclassified.norm)
+prediction.unclassified</code></pre>
+<pre><code>##  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20 
+##  B  A  B  A  A  E  D  B  A  A  B  C  B  A  E  E  A  B  B  B 
+## Levels: A B C D E</code></pre>
+<pre class="r"><code>pmlWriteFiles = function(x) {
+    n = length(x)
+    for (i in 1:n) {
+        filename = paste0(&quot;problem_id_&quot;, i, &quot;.txt&quot;)
+        write.table(x[i], file = filename, quote = FALSE, row.names = FALSE, 
+            col.names = FALSE)
+    }
+}
+pmlWriteFiles(prediction.unclassified)</code></pre>
 </div>
 
 
